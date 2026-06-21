@@ -1,0 +1,40 @@
+name: Site Health Check
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Every day at 8:00 UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check site is live
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://naesthetics.github.io/naesthetics/)
+          echo "HTTP Status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Site returned HTTP $STATUS"
+            exit 1
+          fi
+
+      - name: Check page content
+        run: |
+          CONTENT=$(curl -s https://naesthetics.github.io/naesthetics/)
+
+          # Check title
+          echo "$CONTENT" | grep -q "N Aesthetics" || { echo "::error::Missing title"; exit 1; }
+          echo "✓ Title present"
+
+          # Check key sections
+          echo "$CONTENT" | grep -q "Natural Glow Aesthetic" || { echo "::error::Missing slogan"; exit 1; }
+          echo "✓ Slogan present"
+
+          echo "$CONTENT" | grep -q "Hydra Glow Facial" || { echo "::error::Missing services"; exit 1; }
+          echo "✓ Services present"
+
+          echo "$CONTENT" | grep -q "Send Message" || { echo "::error::Missing contact form"; exit 1; }
+          echo "✓ Contact form present"
+
+          echo ""
+          echo "All checks passed!"
